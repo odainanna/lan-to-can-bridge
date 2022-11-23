@@ -1,3 +1,5 @@
+# pip install pythoncan msgpack uptime
+
 import argparse
 import socket
 import struct
@@ -24,7 +26,7 @@ can.rc['interface'] = parsed_args.interface
 can.rc['bitrate'] = parsed_args.bitrate
 
 
-def log(*args, **kwargs):
+def debug_print(*args, **kwargs):
     """print-like function that only prints in debug mode"""
     if parsed_args.debug:
         print(*args, *kwargs)
@@ -46,45 +48,35 @@ def bus_factory(config):
         config = config['channel']
     return can.Bus(interface=parsed_args.interface, channel=config, receive_own_messages=False, fd=False)
 
+sock = create_lan_socket()
 
-def forward_loop(receive_fn, transform_fn, send_fn, comment=''):
+def fwd_to_lan():
     while True:
-        incoming_msg = receive_fn()
-        outgoing_msg = transform_fn(incoming_msg)
-        send_fn(outgoing_msg)
-        print(comment)
+        incoming_msg = bridge_bus.recv()
+        outgoing_msg = create_lan_msg(incoming_msg)
+        sock.sendto(outgoing_msg, (parsed_args.dest, parsed_args.port))
+        debug_print("fwd to LAN", outgoing_msg)
+
+
+def fwd_to_can():
+    while True:
+        incoming_msg = sock.recv(1024)
+        outgoing_msg = create_can_msg(incoming_msg)
+        bridge_bus.send(outgoing_msg)
+        debug_print(f"fwd to CAN", outgoing_msg)
 
 
 if __name__ == '__main__':
-    configs = can.detect_available_configs(parsed_args.interface)
-    print(configs)
-    if parsed_args.interface == 'virtual':
-        configs = [{'channel': 0}, {'channel': 1}]
-
-    bridge_bus = bus_factory(configs.pop())
-
-
-    # viewer_bus = bus_factory(configs.pop())
-    # can.Notifier([bridge_bus, viewer_bus], [can.Printer()])
-
+    # display available configs 
+    debug_print(can.detect_available_configs(parsed_args.interface))
+    
+    bridge_bus = bus_factory('PCAN_USBBUS1')
     def bridge():
-        # setup notifiers
-        sock = create_lan_socket()
-        lan_thread = Thread(target=forward_loop(lambda: sock.recv(1024),
-                                                lambda msg: create_can_msg(msg),
-                                                lambda msg: bridge_bus.send(msg), comment="fwd to CAN"), daemon=True,
-                            )
-        lan_thread.start()
-
-        can_thread = Thread(target=forward_loop(lambda: bridge_bus.recv(),
-                                                lambda msg: create_lan_msg(msg),
-                                                lambda msg: sock.sendto(msg, (parsed_args.dest, parsed_args.port)),
-                                                comment="fwd to LAN"),
-                            daemon=True)
+        can_thread = Thread(target=fwd_to_lan, daemon=True)                          
         can_thread.start()
+        lan_thread = Thread(target=fwd_to_can, daemon=True)
+        lan_thread.start()
+        input()  # exit on enter
 
-        # todo: stay active longer
-        time.sleep(1000)
-
-
+    debug_print('bridging...')
     bridge()
