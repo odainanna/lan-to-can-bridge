@@ -3,12 +3,10 @@
 import argparse
 import socket
 import struct
-import time
 from threading import Thread
 
 import can
-
-from message_utils import create_can_msg, create_lan_msg
+from lan_bus import LANBus
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dest', default='239.0.0.1')
@@ -48,29 +46,28 @@ def bus_factory(config):
         config = config['channel']
     return can.Bus(interface=parsed_args.interface, channel=config, receive_own_messages=False, fd=False)
 
-sock = create_lan_socket()
 
 def fwd_to_lan():
     while True:
-        incoming_msg = bridge_bus.recv()
-        outgoing_msg = create_lan_msg(incoming_msg)
-        sock.sendto(outgoing_msg, (parsed_args.dest, parsed_args.port))
-        debug_print("fwd to LAN", outgoing_msg)
-
+        msg = bridge_bus.recv()
+        lan_bus.send(msg)
+        print('fwd to LAN', msg)
+        
 
 def fwd_to_can():
     while True:
-        incoming_msg = sock.recv(1024)
-        outgoing_msg = create_can_msg(incoming_msg)
-        bridge_bus.send(outgoing_msg)
-        debug_print(f"fwd to CAN", outgoing_msg)
+        msg = lan_bus.recv()
+        bridge_bus.send(msg)
+        print(f"fwd to CAN", msg)
 
 
 if __name__ == '__main__':
     # display available configs 
-    debug_print(can.detect_available_configs(parsed_args.interface))
+    # debug_print(can.detect_available_configs(parsed_args.interface))
     
     bridge_bus = bus_factory('PCAN_USBBUS1')
+    lan_bus = LANBus()
+
     def bridge():
         can_thread = Thread(target=fwd_to_lan, daemon=True)                          
         can_thread.start()
