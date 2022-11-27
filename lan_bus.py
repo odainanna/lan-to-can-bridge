@@ -8,7 +8,7 @@ from lan_message import LANMessage
 class LANBus(can.BusABC):
     def __init__(
         self,
-        udp_ip="239.0.0.1",
+        dest="239.0.0.1",
         port=62222,
         channel=None,
         can_filters: Optional[can.typechecking.CanFilters] = None,
@@ -21,14 +21,14 @@ class LANBus(can.BusABC):
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind(("", port))
-            mreq = struct.pack("=4sl", socket.inet_aton(udp_ip), socket.INADDR_ANY)
+            mreq = struct.pack("=4sl", socket.inet_aton(dest), socket.INADDR_ANY)
             sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
             return sock
 
         self._sender_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._listener_socket = create_listener_socket()
         self._port = port
-        self._dest = udp_ip
+        self._dest = dest
 
     def _recv_internal(
         self, timeout: Optional[float]
