@@ -1,13 +1,11 @@
+import struct
 from dataclasses import dataclass, astuple
-from struct import unpack, pack
-
-import can
+from struct import pack
 
 
 @dataclass(frozen=False)
-class LANMessage:
-    # header
-    unused: int = 1
+class Header:
+    flag: int = 1
     vcanmc_hdr_len: int = 8
     from_node_id: int = 70
     segment: int = 1
@@ -16,52 +14,76 @@ class LANMessage:
     error_passive: int = 0
     bus_off: int = 0
 
-    # content
+    @staticmethod
+    def fmt():
+        return '8B'
+
+    @staticmethod
+    def size():
+        return 8  # struct.calcsize(Header.fmt())
+
+    def pack(self):
+        return pack(self.fmt(), *astuple(self))
+
+
+@dataclass(frozen=False)
+class Message:
     arbitration_id: int = 1862
-    data: tuple = (0,) * 64
+    data: tuple = None
     dlc: int = 1
     msgCtrl: int = 0
     sec1970: int = 0
     nanoSec: int = 0
     msgUser: int = 0
-    msgMarker: int = 3
-
-    def data(self, pad=False):
-        if not pad:
-            return self.data[: self.dlc]
-        else:
-            return self.data + (0,) * (len(self.data) - 64)
+    msgMarker: int = 1
 
     @staticmethod
-    def from_bytestring(bytestring):
-        vals = unpack("8B L 64B 2B 4L", bytestring)
-        return LANMessage(*vals[:9], vals[9:73], *vals[73:])
+    def fmt():
+        return 'L64B2B4L'
 
-    def to_bytestring(self):
-        vals = astuple(self)
-        padded_data = self.data + ((0,) * (64 - len(self.data)))
-        return pack("8B L 64B 2B 4L", *vals[:9], *padded_data, *vals[10:])
+    @staticmethod
+    def size():
+        return struct.calcsize(Message.fmt())
+
+    def pack(self):
+        return struct.pack(self.fmt(), self.arbitration_id, *self.data, self.dlc, self.msgCtrl, self.sec1970,
+                           self.nanoSec, self.msgUser, self.msgMarker)
+
+
+@dataclass(frozen=False)
+class LANMessages:
+    header: Header
+    messages: list
+
+    def __init__(self, bytestring=None, **kwargs):
+        if bytestring:
+            self.header = Header(*struct.unpack_from(Header.fmt(), bytestring))
+            self.messages = []
+            for message_values in struct.iter_unpack(Message.fmt(), bytestring[Header.size():]):
+                message_values = list(message_values)
+                message_values[1:65] = [message_values[1:65]]  # data as list
+                self.messages.append(Message(*message_values))
+        else:
+            self.header = Header()
+            self.messages = [Message(**kwargs)]
+
+    def pack(self):
+        return self.header.pack() + b''.join([msg.pack() for msg in self.messages])
+
+    @property
+    def message_count(self):
+        return self.header.message_count
+
+    @property
+    def is_flagged(self):
+        return self.header.flag == 55
+
+    def flag(self):
+        self.header.flag = 55
 
 
 if __name__ == "__main__":
     from constants import SAMPLE_BYTES
 
     # check conversion
-    assert LANMessage.from_bytestring(SAMPLE_BYTES).to_bytestring() == SAMPLE_BYTES
-
-    # check that messages are similar
-    kwargs = dict(arbitration_id=3, data=[17, 21, 3], dlc=3)
-    can_msg = can.Message(**kwargs)
-    lan_msg = LANMessage(**kwargs)
-
-    def assert_messages_are_similar(can_msg: can.Message, lan_msg: LANMessage):
-        for key, val in kwargs.items():
-            if key == "data":
-                assert can_msg.data == bytearray(lan_msg.data)
-                continue
-            else:
-                assert getattr(can_msg, key) == val, f"{getattr(can_msg, key)} {val}"
-                assert getattr(lan_msg, key) == val, f"{getattr(lan_msg, key)} {val}"
-                # and consequently equal to each other
-
-    assert_messages_are_similar(can_msg, lan_msg)
+    assert LANMessages(SAMPLE_BYTES).pack() == SAMPLE_BYTES

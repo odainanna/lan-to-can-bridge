@@ -3,9 +3,9 @@
 import argparse
 from threading import Thread
 
-import can
-from lan_bus import LANBus
 from can.interfaces.pcan import PcanBus
+
+from lan_bus import LANBus
 
 # parse args
 parser = argparse.ArgumentParser()
@@ -16,18 +16,6 @@ parser.add_argument("--seg", default=1)
 parser.add_argument("--bitrate", default=125000)
 parsed_args = parser.parse_args()
 
-
-def is_flagged(msg):
-    # todo: using id is a quick fix 
-    return msg.arbitration_id == 55
-
-
-def flag(msg):
-    # todo: using id is a quick fix 
-    msg.arbitration_id = 55
-    return msg
-
-
 if __name__ == "__main__":
     can_bus = PcanBus(channel="PCAN_USBBUS1", bitrate=parsed_args.bitrate)
     lan_bus = LANBus(port=parsed_args.port, dest=parsed_args.dest)
@@ -36,21 +24,14 @@ if __name__ == "__main__":
     def fwd_to_lan():
         while True:
             msg = can_bus.recv()
-            if is_flagged(msg):  # don't forward a forwarded message
-                continue
-            flag(msg)
             lan_bus.send(msg)
-            print("fwd to LAN", msg)
 
 
     def fwd_to_can():
         while True:
-            msg = lan_bus.recv()
-            if is_flagged(msg):
-                continue
-            flag(msg)
-            can_bus.send(msg)
-            print(f"fwd to CAN", msg)
+            msgs = lan_bus.recv()
+            for msg in msgs:
+                can_bus.send(msg)
 
 
     def bridge():
