@@ -28,14 +28,14 @@ class Header:
 
 @dataclass(frozen=False)
 class Message:
-    arbitration_id: int = 1862
-    data: tuple = None
-    dlc: int = 1
-    msgCtrl: int = 0
-    sec1970: int = 0
-    nanoSec: int = 0
-    msgUser: int = 0
-    msgMarker: int = 1
+    arbitration_id: int
+    data: tuple
+    dlc: int
+    msgCtrl: int
+    sec1970: int
+    nanoSec: int
+    msgUser: int
+    msgMarker: int
 
     @staticmethod
     def fmt():

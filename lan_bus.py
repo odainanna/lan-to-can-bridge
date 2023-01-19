@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Any, Tuple
 
 import can
 from can import Message
@@ -29,17 +29,16 @@ class LANBus:
         self._port = port
         self._dest = dest
 
-    def recv(self, timeout: Optional[float] = None) -> list[Message] | None:
+    def recv(self, timeout: Optional[float] = None):
         incoming_msg = self._listener_socket.recv(10240)
         if not (len(incoming_msg) - Header.size()) % lan_message.Message.size() == 0:
             print(f'Ignoring incoming LAN message with length {len(incoming_msg)}.')
 
         lan_msg_obj = LANMessages(incoming_msg)
-
         if lan_msg_obj.is_flagged:
             return []
 
-        return [can.Message(
+        return [(can.Message(
             timestamp=msg.sec1970,
             arbitration_id=msg.arbitration_id,
             is_extended_id=False,  # 11 bit
@@ -49,7 +48,7 @@ class LANBus:
             dlc=msg.dlc,
             data=msg.data[: msg.dlc],
             check=True,
-        ) for msg in lan_msg_obj.messages]
+        ), msg.msgMarker) for msg in lan_msg_obj.messages]
 
     def send(self, msg: can.Message, timeout: Optional[float] = None):
         def bytearrray_to_list(array):
@@ -63,13 +62,20 @@ class LANBus:
 
         # form the message
         lan_msg_object = LANMessages(
-            sec1970=round(msg.timestamp),
-            arbitration_id=msg.arbitration_id,
-            dlc=msg.dlc,
+            arbitration_id = msg.arbitration_id,
             data=bytearrray_to_list(msg.data),
+            dlc=msg.dlc,
+            msgCtrl=0,
+            sec1970=round(msg.timestamp),
+            nanoSec=0,
+            msgMarker=1,
+            msgUser=0,
         )
 
         # flag the message as forwarded
         lan_msg_object.flag()
 
         self._sender_socket.sendto(lan_msg_object.pack(), (self._dest, self._port))
+
+    def __str__(self):
+        return 'LAN_BUS'
