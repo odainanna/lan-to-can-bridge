@@ -1,7 +1,6 @@
-from typing import Optional, List, Any, Tuple
+from typing import Optional
 
 import can
-from can import Message
 
 import lan_message
 from lan_message import LANMessages, Header
@@ -29,7 +28,7 @@ class LANBus:
         self._port = port
         self._dest = dest
 
-    def recv(self, timeout: Optional[float] = None):
+    def recv(self):
         incoming_msg = self._listener_socket.recv(10240)
         if not (len(incoming_msg) - Header.size()) % lan_message.Message.size() == 0:
             print(f'Ignoring incoming LAN message with length {len(incoming_msg)}.')
@@ -50,7 +49,7 @@ class LANBus:
             check=True,
         ), msg.msgMarker) for msg in lan_msg_obj.messages]
 
-    def send(self, msg: can.Message, timeout: Optional[float] = None):
+    def send(self, msg: can.Message, marker: int) -> None:
         def bytearrray_to_list(array):
             numeric_data = [0, ] * 64
             for i in range(len(array)):
@@ -68,7 +67,7 @@ class LANBus:
             msgCtrl=0,
             sec1970=round(msg.timestamp),
             nanoSec=0,
-            msgMarker=1,
+            msgMarker=marker,
             msgUser=0,
         )
 
