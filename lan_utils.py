@@ -1,18 +1,30 @@
 import struct
-from dataclasses import dataclass, astuple
+from dataclasses import dataclass
+from enum import Enum
 from struct import pack
+
+
+class FromCanTypeEnum(Enum):
+    CAN = 0
+    VCAN = 1
+
+
+class MarkerEnum(Enum):
+    CAN_1 = 1
+    CAN_2 = 2
+    BOTH = 3
 
 
 @dataclass(frozen=False)
 class Header:
-    flag: int = 1
-    vcanmc_hdr_len: int = 8
-    from_node_id: int = 70
-    segment: int = 1
-    from_can_type: int = 2
-    message_count: int = 1
-    error_passive: int = 0
-    bus_off: int = 0
+    version: int
+    vcanmc_hdr_len: int
+    from_node_id: int
+    segment: int
+    from_can_type: FromCanTypeEnum
+    message_count: int
+    error_passive: int
+    bus_off: int
 
     @staticmethod
     def fmt():
@@ -23,7 +35,8 @@ class Header:
         return 8  # struct.calcsize(Header.fmt())
 
     def pack(self):
-        return pack(self.fmt(), *astuple(self))
+        return pack(self.fmt(), self.version, self.vcanmc_hdr_len, self.from_node_id, self.segment,
+                    self.from_can_type.value, self.message_count, self.error_passive, self.bus_off)
 
 
 @dataclass(frozen=False)
@@ -35,7 +48,7 @@ class Message:
     sec1970: int
     nanoSec: int
     msgUser: int
-    msgMarker: int
+    marker: int
 
     @staticmethod
     def fmt():
@@ -47,7 +60,7 @@ class Message:
 
     def pack(self):
         return struct.pack(self.fmt(), self.arbitration_id, *self.data, self.dlc, self.msgCtrl, self.sec1970,
-                           self.nanoSec, self.msgUser, self.msgMarker)
+                           self.nanoSec, self.msgUser, self.marker)
 
 
 @dataclass(frozen=False)
@@ -55,35 +68,22 @@ class LANMessages:
     header: Header
     messages: list
 
-    def __init__(self, bytestring=None, **kwargs):
-        if bytestring:
-            self.header = Header(*struct.unpack_from(Header.fmt(), bytestring))
-            self.messages = []
-            for message_values in struct.iter_unpack(Message.fmt(), bytestring[Header.size():]):
-                message_values = list(message_values)
-                message_values[1:65] = [message_values[1:65]]  # data as list
-                self.messages.append(Message(*message_values))
-        else:
-            self.header = Header()
-            self.messages = [Message(**kwargs)]
+    @staticmethod
+    def from_bytestring(bytestring):
+        header = Header(*struct.unpack_from(Header.fmt(), bytestring))
+        messages = []
+        for message_values in struct.iter_unpack(Message.fmt(), bytestring[Header.size():]):
+            message_values = list(message_values)
+            message_values[1:65] = [message_values[1:65]]  # data as list
+            messages.append(Message(*message_values))
+        return LANMessages(header, messages)
 
     def pack(self):
         return self.header.pack() + b''.join([msg.pack() for msg in self.messages])
-
-    @property
-    def message_count(self):
-        return self.header.message_count
-
-    @property
-    def is_flagged(self):
-        return self.header.flag == 55
-
-    def flag(self):
-        self.header.flag = 55
 
 
 if __name__ == '__main__':
     SAMPLE_BYTES = b"\x01\x08F\x01\x02\x01\x00\x00F\x07\x00\x00\x7f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03\x00\x00\x00"
 
     # check conversion
-    assert LANMessages(SAMPLE_BYTES).pack() == SAMPLE_BYTES
+    assert LANMessages.from_bytestring(SAMPLE_BYTES).pack() == SAMPLE_BYTES
