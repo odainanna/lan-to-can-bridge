@@ -13,9 +13,9 @@ from lan_utils import FromCanTypeEnum, MarkerEnum
 # parse args
 parser = argparse.ArgumentParser()
 parser.add_argument('--net', default='127.0.0.1')
-parser.add_argument('--port', default=62222)
-parser.add_argument('--seg', default=1)
-parser.add_argument('--bitrate', default=125000)
+parser.add_argument('--port', default=62222, type=int)
+parser.add_argument('--seg', default=5, type=int)
+parser.add_argument('--bitrate', default=125000, type=int)
 parser.add_argument('--interface', default='pcan')
 args = parser.parse_args()
 
