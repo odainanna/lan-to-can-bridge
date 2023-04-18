@@ -83,7 +83,7 @@ class Bridge:
                 if lan_msg.marker == MarkerEnum.CAN_1.value or lan_msg.marker == MarkerEnum.BOTH.value:
                     reset_bus_1 = not self._send(self._can_1, can_message)
                 if lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value:
-                    reset_bus_2 = not self._send(self._can_1, can_message)
+                    reset_bus_2 = not self._send(self._can_2, can_message)
 
             # if sending caused an error on a bus, try to reset the bus
             if reset_bus_1:
