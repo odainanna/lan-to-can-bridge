@@ -13,15 +13,39 @@ parser.add_argument('--interface', default='pcan')
 args = parser.parse_args()
 
 
+class Table:
+    def __init__(self, root, columns):
+        self.vars = dict()
+        self.n_rows = n_rows = len(columns[0])
+        self.n_cols = n_cols = len(columns)
+        for i in range(n_rows):
+            for j in range(n_cols):
+                font = ("Arial Bold", 14) if i == 0 else ("Arial", 14)
+                var = tk.StringVar()
+                var.set(str(columns[j][i]))
+                self.e = tk.Label(root, textvariable=var, font=font)
+                self.e.grid(row=i, column=j, sticky='W', padx=10)
+                self.vars[i, j] = var
+
+    def update(self, data):
+        for i in range(self.n_rows):
+            for j in range(self.n_cols):
+                self.vars[i, j].set(str(data[j][i]))
+
+
 class BridgeApp(tk.Frame):
     def __init__(self):
         root = tk.Tk()
         self.root = root
-        args_string = f'BridgeApp(net={args.net}, port={args.port}, seg={args.seg}, bitrate={args.bitrate}, ' \
-                      f'interface={args.interface})'
+        args_string = f'BridgeApp(net={args.net}, port={args.port}, seg={args.seg}, bitrate={args.bitrate}'
         root.title(args_string)
-        root.geometry('800x200+50+50')
-        # root.wm_state('iconic')
+
+        # add an icon
+        # photo = tk.PhotoImage(file='bridge-icon.png')
+        # root.wm_iconphoto(False, photo)
+
+        # minimize window after opening
+        root.wm_state('iconic')
         tk.Frame.__init__(self, root)
         self.grid()
 
@@ -29,31 +53,15 @@ class BridgeApp(tk.Frame):
         self.bridge = Bridge(args.net, args.port, args.seg, args.bitrate, args.interface)
         self.bridge.start()
 
-        report = self.bridge.report()
-        names = ['BUS'] + list(report.keys())
-        counts = ['SENT'] + list(report.values())
+        self.table = Table(self, self.bridge.stats())
 
-        # write the names of the buses
-        for i, name in enumerate(names):
-            var = tk.StringVar()
-            var.set(name)
-            tk.Label(root, textvariable=var, anchor="e").grid(column=0, row=i)
-
-        self.editable_labels = []
-        # write the initial counts
-        for i, count in enumerate(counts):
-            var = tk.StringVar()
-            var.set(str(count))
-            tk.Label(root, textvariable=var, anchor="e").grid(column=1, row=i)
-            if i != 0:  # ignore the first label, which is a header
-                self.editable_labels.append(var)
+        # pad the inside of the frame
+        self.grid(padx=10, pady=10)
 
     def refresh(self):
-        # get counts
-        counts = self.bridge.report().values()
-        # update values
-        for i, count in enumerate(counts):
-            self.editable_labels[i].set(str(count))
+        """Update the number of sent messages on the screen"""
+        stats = self.bridge.stats()
+        self.table.update(stats)
         # schedule next update
         self.root.after(500, self.refresh)
 

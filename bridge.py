@@ -39,7 +39,7 @@ class Bridge:
         self._can_2 = can.Bus(interface=interface, channel='PCAN_USBBUS2', bitrate=bitrate)
         self._lan_bus = LANBus(port=port, dest='239.0.0.' + str(seg), segment=seg)
 
-        self.counter = {self._can_1: 0, self._can_2: 0, self._lan_bus: 0}
+        self.counter = {self._can_1.channel_id: 0, self._can_2.channel_id: 0, self._lan_bus.channel_id: 0}
 
     def fwd_to_lan(self, can_bus):
         logging.info(f'listening to {can_bus}')
@@ -49,7 +49,7 @@ class Bridge:
                 continue
             last_digit_of_channel_name = int(can_bus.channel_info[-1])
             self._lan_bus.send(msg, marker=last_digit_of_channel_name)
-            self.counter[self._lan_bus] += 1  # counter += 1
+            self.counter[self._lan_bus.channel_id] += 1
             logging.info(f'{self._lan_bus} sent {msg}')
 
     def _send(self, can_bus, msg: can.Message):
@@ -93,8 +93,8 @@ class Bridge:
                 self._can_2 = self.reset_bus(self._can_2)
                 logging.warning(f'Reset {self._can_2}')
 
-    def report(self):
-        return self.counter
+    def stats(self):
+        return [['BUSES', *self.counter.keys()], ['SENT', *self.counter.values()]]
 
     def start(self):
         Thread(target=self.fwd_to_lan, args=(self._can_1,), daemon=True).start()
