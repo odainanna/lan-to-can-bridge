@@ -24,7 +24,7 @@ class LANBus:
         self._port = port
         self._dest = dest
 
-        self.channel_id = 'LAN_BUS'
+        self.channel_info = 'LAN_BUS'
 
     def recv(self):
         incoming_msg = self._listener_socket.recv(10240)
@@ -59,7 +59,7 @@ class LANBus:
         self._sender_socket.sendto(lan_msgs.pack(), (self._dest, self._port))
 
     def __str__(self):
-        return self.channel_id
+        return self.channel_info
 
     def status_string(self):
         return ''

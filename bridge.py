@@ -39,7 +39,7 @@ class Bridge:
         self._can_2 = can.Bus(interface=interface, channel='PCAN_USBBUS2', bitrate=bitrate)
         self._lan_bus = LANBus(port=port, dest='239.0.0.' + str(seg), segment=seg)
 
-        self.counter = {self._can_1.channel_id: 0, self._can_2.channel_id: 0, self._lan_bus.channel_id: 0}
+        self.counter = {self._can_1.channel_info: 0, self._can_2.channel_info: 0, self._lan_bus.channel_info: 0}
 
     def fwd_to_lan(self, can_bus):
         logging.info(f'listening to {can_bus}')
@@ -49,14 +49,14 @@ class Bridge:
                 continue
             last_digit_of_channel_name = int(can_bus.channel_info[-1])
             self._lan_bus.send(msg, marker=last_digit_of_channel_name)
-            self.counter[self._lan_bus.channel_id] += 1
+            self.counter[self._lan_bus.channel_info] += 1
             logging.info(f'{self._lan_bus} sent {msg}')
 
     def _send(self, can_bus, msg: can.Message):
         try:
             can_bus.send(msg)
             logging.info(f'{can_bus} sent {msg}')
-            self.counter[can_bus] += 1  # counter += 1  todo: multiple messages in one?
+            self.counter[can_bus.channel_info] += 1  # counter += 1  todo: multiple messages in one?
             return True
         except can.interfaces.pcan.pcan.PcanCanOperationError as e:
             logging.warning(e)
