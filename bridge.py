@@ -48,6 +48,7 @@ class Bridge:
             if msg.error_state_indicator or msg.is_error_frame:
                 continue
             last_digit_of_channel_name = int(can_bus.channel_info[-1])
+            # print("LAN", msg, can_bus.channel_info)
             self._lan_bus.send(msg, marker=last_digit_of_channel_name)
             self.counter[self._lan_bus.channel_info] += 1
             logging.info(f'{self._lan_bus} sent {msg}')
@@ -72,18 +73,21 @@ class Bridge:
             lan_msg_obj = self._lan_bus.recv()
             # if a lan message is marked "from can", assume it has been forwarded already and do not
             # forward
-            message_has_been_forwarded_already = lan_msg_obj.header.from_can_type == FromCanTypeEnum.CAN
+            message_has_been_forwarded_already = (lan_msg_obj.header.from_can_type == FromCanTypeEnum.CAN.value)
             if message_has_been_forwarded_already:
                 continue
 
             # try to send all messages
             reset_bus_1, reset_bus_2 = False, False
             for lan_msg in lan_msg_obj.messages:
+                lan_msg.arbitration_id &= 0xfff 
                 can_message = create_can_msg(lan_msg)
                 if lan_msg.marker == MarkerEnum.CAN_1.value or lan_msg.marker == MarkerEnum.BOTH.value:
                     reset_bus_1 = not self._send(self._can_1, can_message)
+                    # print("CAN1", "Type", lan_msg_obj.header.from_can_type, hex(lan_msg.arbitration_id), hex(lan_msg.data[0]), hex(lan_msg.data[1]), hex(lan_msg.data[2]), hex(lan_msg.data[3]), lan_msg.marker)
                 if lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value:
                     reset_bus_2 = not self._send(self._can_2, can_message)
+                    # print("CAN2", "Type", lan_msg_obj.header.from_can_type, hex(lan_msg.arbitration_id), hex(lan_msg.data[0]), hex(lan_msg.data[1]), hex(lan_msg.data[2]), hex(lan_msg.data[3]), lan_msg.marker)
 
             # if sending caused an error on a bus, try to reset the bus
             if reset_bus_1:
