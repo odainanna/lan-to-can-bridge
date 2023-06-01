@@ -26,20 +26,17 @@ def create_can_msg(lan_msg):
 
 
 class Bridge:
-    def __init__(self, net, port, seg, bitrate, interface):
-        if not can.detect_available_configs(interface):
-            raise ValueError('No available configs')
-        self._net = net
-        self._port = port
-        self._seg = seg
-        self._bitrate = bitrate
-        self._interface = interface
+    def __init__(self, bus_1, bus_2, lan_bus):
+        self.bus_1 = bus_1
+        self.bus_2 = bus_2
+        self.lan_bus = lan_bus
+        self.counter = {self.bus_1.channel_info: 0, self.bus_2.channel_info: 0, self.lan_bus.channel_info: 0}
+        self.start()
 
-        self._can_1 = can.Bus(interface=interface, channel='PCAN_USBBUS1', bitrate=bitrate)
-        self._can_2 = can.Bus(interface=interface, channel='PCAN_USBBUS2', bitrate=bitrate)
-        self._lan_bus = LANBus(port=port, dest='239.0.0.' + str(seg), segment=seg)
+    @staticmethod
+    def detect():
+        return can.detect_available_configs('pcan')
 
-        self.counter = {self._can_1.channel_info: 0, self._can_2.channel_info: 0, self._lan_bus.channel_info: 0}
 
     def fwd_to_lan(self, can_bus):
         logging.info(f'listening to {can_bus}')
@@ -48,10 +45,9 @@ class Bridge:
             if msg.error_state_indicator or msg.is_error_frame:
                 continue
             last_digit_of_channel_name = int(can_bus.channel_info[-1])
-            # print("LAN", msg, can_bus.channel_info)
-            self._lan_bus.send(msg, marker=last_digit_of_channel_name)
-            self.counter[self._lan_bus.channel_info] += 1
-            logging.info(f'{self._lan_bus} sent {msg}')
+            self.lan_bus.send(msg, marker=last_digit_of_channel_name)
+            self.counter[self.lan_bus.channel_info] += 1
+            logging.info(f'{self.lan_bus} sent {msg}')
 
     def _send(self, can_bus, msg: can.Message):
         try:
@@ -64,13 +60,14 @@ class Bridge:
             return False
 
     def reset_bus(self, bus):
-        bus.shutdown()
-        return can.Bus(interface=self._interface, channel=bus.channel_info, bitrate=self._bitrate)
+        raise NotImplemented()  # todo
+        #bus.shutdown()
+        #return can.Bus(interface=self._interface, channel=bus.channel_info, bitrate=self._bitrate)
 
     def fwd_to_can(self):
-        logging.info(f'listening to {self._lan_bus}')
+        logging.info(f'listening to {self.lan_bus}')
         while True:
-            lan_msg_obj = self._lan_bus.recv()
+            lan_msg_obj = self.lan_bus.recv()
             # if a lan message is marked "from can", assume it has been forwarded already and do not
             # forward
             message_has_been_forwarded_already = (lan_msg_obj.header.from_can_type == FromCanTypeEnum.CAN.value)
@@ -83,24 +80,22 @@ class Bridge:
                 lan_msg.arbitration_id &= 0xfff 
                 can_message = create_can_msg(lan_msg)
                 if lan_msg.marker == MarkerEnum.CAN_1.value or lan_msg.marker == MarkerEnum.BOTH.value:
-                    reset_bus_1 = not self._send(self._can_1, can_message)
-                    # print("CAN1", "Type", lan_msg_obj.header.from_can_type, hex(lan_msg.arbitration_id), hex(lan_msg.data[0]), hex(lan_msg.data[1]), hex(lan_msg.data[2]), hex(lan_msg.data[3]), lan_msg.marker)
+                    reset_bus_1 = not self._send(self.bus_1, can_message)
                 if lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value:
-                    reset_bus_2 = not self._send(self._can_2, can_message)
-                    # print("CAN2", "Type", lan_msg_obj.header.from_can_type, hex(lan_msg.arbitration_id), hex(lan_msg.data[0]), hex(lan_msg.data[1]), hex(lan_msg.data[2]), hex(lan_msg.data[3]), lan_msg.marker)
+                    reset_bus_2 = not self._send(self.bus_2, can_message)
 
             # if sending caused an error on a bus, try to reset the bus
             if reset_bus_1:
-                self._can_1 = self.reset_bus(self._can_1)
-                logging.warning(f'Reset {self._can_1}')
+                self.bus_1 = self.reset_bus(self.bus_1)
+                logging.warning(f'Reset {self.bus_1}')
             if reset_bus_2:
-                self._can_2 = self.reset_bus(self._can_2)
-                logging.warning(f'Reset {self._can_2}')
+                self.bus_2 = self.reset_bus(self.bus_2)
+                logging.warning(f'Reset {self.bus_2}')
 
     def stats(self):
         return [['BUSES', *self.counter.keys()], ['SENT', *self.counter.values()]]
 
     def start(self):
-        Thread(target=self.fwd_to_lan, args=(self._can_1,), daemon=True).start()
-        Thread(target=self.fwd_to_lan, args=(self._can_2,), daemon=True).start()
+        Thread(target=self.fwd_to_lan, args=(self.bus_1,), daemon=True).start()
+        Thread(target=self.fwd_to_lan, args=(self.bus_2,), daemon=True).start()
         Thread(target=self.fwd_to_can, daemon=True).start()

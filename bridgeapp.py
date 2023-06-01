@@ -1,7 +1,12 @@
 import argparse
+import sys
 import tkinter as tk
+from tkinter.messagebox import showinfo
+
+from can.interfaces.pcan import PcanBus
 
 from bridge import Bridge
+from lan_bus import LANBus
 
 # parse args
 parser = argparse.ArgumentParser()
@@ -49,11 +54,24 @@ class BridgeApp(tk.Frame):
         tk.Frame.__init__(self, root)
         self.grid()
 
-        # start the bridge
-        self.bridge = Bridge(args.net, args.port, args.seg, args.bitrate, args.interface)
-        self.bridge.start()
+        # detect PCAN channels
+        channel_info = Bridge.detect()
+        n_configs = len(channel_info)
+        if n_configs == 0:
+            showinfo(title='Not detected', message='No PCAN channels detected.')
+            sys.exit(0)
+        elif n_configs == 1:
+            showinfo(title=None, message=f'{n_configs}/2 PCAN channels detected.')
+            sys.exit(0)
 
-        self.table = Table(self, self.bridge.stats())
+        # start bridge
+        bus_1 = PcanBus(channel=channel_info[0]['channel'], bitrate=args.bitrate)
+        bus_2 = PcanBus(channel=channel_info[1]['channel'], bitrate=args.bitrate)
+        lan_bus = LANBus(port=args.port, dest='239.0.0.' + str(args.seg), segment=args.seg)
+        self.bridge = Bridge(bus_1, bus_2, lan_bus)
+
+        # create table widget
+        self.table = self.table = Table(self, self.bridge.stats())
 
         # pad the inside of the frame
         self.grid(padx=10, pady=10)
