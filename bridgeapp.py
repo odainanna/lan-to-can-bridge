@@ -3,7 +3,9 @@ import sys
 import tkinter as tk
 from tkinter.messagebox import showinfo
 
+import can
 from can.interfaces.pcan import PcanBus
+from can.interfaces.pcan.pcan import PcanCanInitializationError
 
 from bridge import Bridge
 from lan_bus import LANBus
@@ -13,8 +15,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--net', default='127.0.0.1')
 parser.add_argument('--port', default=62222, type=int)
 parser.add_argument('--seg', default=5, type=int)
-parser.add_argument('--bitrate', default=125000, type=int)
-parser.add_argument('--interface', default='pcan')
+parser.add_argument('--bitrate', default=125_000, type=int)
+parser.add_argument('--dbitrate', type=int)
 args = parser.parse_args()
 
 
@@ -65,8 +67,30 @@ class BridgeApp(tk.Frame):
             sys.exit(0)
 
         # start bridge
-        bus_1 = PcanBus(channel=channel_info[0]['channel'], bitrate=args.bitrate)
-        bus_2 = PcanBus(channel=channel_info[1]['channel'], bitrate=args.bitrate)
+        if args.dbitrate:
+            timing = can.BitTimingFd.from_sample_point(
+                f_clock=80_000_000,
+                nom_bitrate=args.bitrate,
+                nom_sample_point=81.3,
+                data_bitrate=args.dbitrate,
+                data_sample_point=80.0,
+            )
+            bus_kwargs = dict(auto_reset=True, timing=timing)
+        else:
+            bus_kwargs = dict(auto_reset=True, bitrate=args.bitrate, fd=False)
+
+        try:
+            bus_1 = PcanBus(channel=channel_info[0]['channel'], **bus_kwargs)
+            bus_2 = PcanBus(channel=channel_info[1]['channel'], **bus_kwargs)
+        except PcanCanInitializationError:
+            showinfo(title=None, message=f'PCAN initialization failed')
+            sys.exit(0)
+
+        if not (bus_1.status_is_ok() and bus_2.status_is_ok()):
+            showinfo(title='Unexpected bus state', message=f'{bus_1.channel_info}: {bus_1.status_string()}\n'
+                                                           f'{bus_2.channel_info}: {bus_2.status_string()}')
+            sys.exit(0)
+
         lan_bus = LANBus(port=args.port, dest='239.0.0.' + str(args.seg), segment=args.seg)
         self.bridge = Bridge(bus_1, bus_2, lan_bus)
 

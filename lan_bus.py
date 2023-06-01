@@ -40,7 +40,7 @@ class LANBus:
                 numeric_data[i] = int(array[i])
             return tuple(numeric_data)
 
-        if any([can_message.is_extended_id, can_message.is_fd]):
+        if can_message.is_extended_id:
             raise NotImplemented()
 
         # form the message, flag as forwarded
