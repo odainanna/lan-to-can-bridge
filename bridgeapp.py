@@ -12,6 +12,8 @@ from can.interfaces.pcan.pcan import PcanCanInitializationError
 from bridge import Bridge
 from lan_bus import LANBus
 
+VERSION = '1.0.0'
+
 # parse args
 parser = argparse.ArgumentParser()
 parser.add_argument('--net', default='127.0.0.1')
@@ -20,8 +22,6 @@ parser.add_argument('--seg', default=1, type=int)
 parser.add_argument('--bitrate', default=125_000, type=int)
 parser.add_argument('--dbitrate', type=int)
 args = parser.parse_args()
-
-VERSION = '1.0.0'
 
 
 class Table:
@@ -48,8 +48,11 @@ class BridgeApp(tk.Frame):
     def __init__(self):
         root = tk.Tk()
         self.root = root
-        args_string = f'BridgeApp(net={args.net}, port={args.port}, seg={args.seg}, bitrate={args.bitrate} v{VERSION}'
-        root.title(args_string)
+
+        # set the window title
+        title = ' '.join(f'{k}={v}' for (k, v) in args.__dict__.items())
+        title += f' v{VERSION}'
+        root.title(title)
 
         # add an icon
         # photo = tk.PhotoImage(file='bridge-icon.png')

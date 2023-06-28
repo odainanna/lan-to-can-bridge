@@ -6,9 +6,7 @@ from can.interfaces.pcan.pcan import PcanBus, PcanCanOperationError
 from lan_bus import LANBus
 from lan_utils import FromCanTypeEnum, MarkerEnum
 
-
-def log(s):
-    print(s)
+log = print
 
 
 def create_can_msg(lan_msg, is_fd):
@@ -38,12 +36,17 @@ class Bridge:
         self.fd = self.bus_1.fd
         self.start()
 
+
+        a = 0
+
+
+
     @staticmethod
     def detect():
         return can.detect_available_configs('pcan')
 
     def listen_to_can(self, can_bus):
-        log(f'listening to {can_bus}')
+        # log(f'listening to {can_bus}')
         while True:
             try:
                 msg: can.Message = can_bus.recv()
@@ -62,10 +65,10 @@ class Bridge:
         try:
             can_bus.send(msg)
         except can.interfaces.pcan.pcan.PcanCanOperationError as e:
-            log(e)
+            log('ERROR:', e)
 
     def listen_to_lan(self):
-        log(f'listening to {self.lan_bus}')
+        # log(f'listening to {self.lan_bus}')
         while True:
             lan_msg_obj = self.lan_bus.recv()
             # if a lan message is marked "from can", assume it has been forwarded already and do not
