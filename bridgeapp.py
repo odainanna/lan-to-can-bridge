@@ -14,10 +14,12 @@ from lan_bus import LANBus
 parser = argparse.ArgumentParser()
 parser.add_argument('--net', default='127.0.0.1')
 parser.add_argument('--port', default=62222, type=int)
-parser.add_argument('--seg', default=5, type=int)
+parser.add_argument('--seg', default=1, type=int)
 parser.add_argument('--bitrate', default=125_000, type=int)
 parser.add_argument('--dbitrate', type=int)
 args = parser.parse_args()
+
+VERSION = '1.0.0'
 
 
 class Table:
@@ -27,7 +29,7 @@ class Table:
         self.n_cols = n_cols = len(columns)
         for i in range(n_rows):
             for j in range(n_cols):
-                font = ("Arial Bold", 14) if i == 0 else ("Arial", 14)
+                font = ("Arial Bold", 14) if (i == 0 or j == 0) else ("Arial", 14)
                 var = tk.StringVar()
                 var.set(str(columns[j][i]))
                 self.e = tk.Label(root, textvariable=var, font=font)
@@ -44,7 +46,7 @@ class BridgeApp(tk.Frame):
     def __init__(self):
         root = tk.Tk()
         self.root = root
-        args_string = f'BridgeApp(net={args.net}, port={args.port}, seg={args.seg}, bitrate={args.bitrate}'
+        args_string = f'BridgeApp(net={args.net}, port={args.port}, seg={args.seg}, bitrate={args.bitrate} v{VERSION}'
         root.title(args_string)
 
         # add an icon
