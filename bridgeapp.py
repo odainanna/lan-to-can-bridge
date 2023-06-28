@@ -1,3 +1,5 @@
+# bridgeapp.py (--dbitrate 2000000 --bitrate 250000)
+
 import argparse
 import sys
 import tkinter as tk
