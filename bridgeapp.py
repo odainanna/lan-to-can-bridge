@@ -6,8 +6,8 @@ import tkinter as tk
 from tkinter.messagebox import showinfo
 
 import can
-from can.interfaces.pcan import PcanBus
 from can.interfaces.pcan.pcan import PcanCanInitializationError
+from can.interfaces.virtual import VirtualBus
 
 from bridge import Bridge
 from lan_bus import LANBus
@@ -44,36 +44,16 @@ class Table:
                 self.vars[i, j].set(str(data[j][i]))
 
 
-class BridgeApp(tk.Frame):
-    def __init__(self):
-        root = tk.Tk()
-        self.root = root
-
-        # set the window title
-        title = ' '.join(f'{k}={v}' for (k, v) in args.__dict__.items())
-        title += f' v{VERSION}'
-        root.title(title)
-
-        # add an icon
-        # photo = tk.PhotoImage(file='bridge-icon.png')
-        # root.wm_iconphoto(False, photo)
-
-        # minimize window after opening
-        root.wm_state('iconic')
-        tk.Frame.__init__(self, root)
-        self.grid()
-
-        # detect PCAN channels
-        channel_info = Bridge.detect()
-        n_configs = len(channel_info)
-        if n_configs == 0:
-            showinfo(title='Not detected', message='No PCAN channels detected.')
-            sys.exit(0)
-        elif n_configs == 1:
-            showinfo(title=None, message=f'{n_configs}/2 PCAN channels detected.')
-            sys.exit(0)
-
-        # start bridge
+def create_buses(virtual=False):
+    if virtual:
+        return VirtualBus('v1'), VirtualBus('v2')
+    channel_info = Bridge.detect()
+    n_configs = len(channel_info)
+    if n_configs == 0:
+        showinfo(title='Not detected', message='No PCAN channels detected.')
+    elif n_configs == 1:
+        showinfo(title=None, message=f'{n_configs}/2 PCAN channels detected.')
+    else:
         if args.dbitrate:
             timing = can.BitTimingFd.from_sample_point(
                 f_clock=80_000_000,
@@ -87,18 +67,31 @@ class BridgeApp(tk.Frame):
             bus_kwargs = dict(auto_reset=True, bitrate=args.bitrate, fd=False)
 
         try:
-            bus_1 = PcanBus(channel=channel_info[0]['channel'], **bus_kwargs)
-            bus_2 = PcanBus(channel=channel_info[1]['channel'], **bus_kwargs)
+            bus_1 = VirtualBus(channel=channel_info[0]['channel'], **bus_kwargs)
+            bus_2 = VirtualBus(channel=channel_info[1]['channel'], **bus_kwargs)
+            return bus_1, bus_2
         except PcanCanInitializationError:
             showinfo(title=None, message=f'PCAN initialization failed')
-            sys.exit(0)
+    sys.exit(0)
 
-        if not (bus_1.status_is_ok() and bus_2.status_is_ok()):
-            showinfo(title='Unexpected bus state', message=f'{bus_1.channel_info}: {bus_1.status_string()}\n'
-                                                           f'{bus_2.channel_info}: {bus_2.status_string()}')
-            sys.exit(0)
+
+class BridgeApp(tk.Frame):
+    def __init__(self):
+        root = tk.Tk()
+        self.root = root
+
+        # set the window title
+        title = ' '.join(f'{k}={v}' for (k, v) in args.__dict__.items())
+        title += f' v{VERSION}'
+        root.title(title)
+
+        # minimize window after opening
+        root.wm_state('iconic')
+        tk.Frame.__init__(self, root)
+        self.grid()
 
         lan_bus = LANBus(port=args.port, dest='239.0.0.' + str(args.seg), segment=args.seg)
+        bus_1, bus_2 = create_buses(virtual=False)
         self.bridge = Bridge(bus_1, bus_2, lan_bus)
 
         # create table widget
