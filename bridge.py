@@ -36,11 +36,6 @@ class Bridge:
         self.fd = self.bus_1.fd
         self.start()
 
-
-        a = 0
-
-
-
     @staticmethod
     def detect():
         return can.detect_available_configs('pcan')
@@ -80,13 +75,13 @@ class Bridge:
             for lan_msg in lan_msg_obj.messages:
                 lan_msg.arbitration_id &= 0xfff
                 can_message = create_can_msg(lan_msg, self.fd)
-                self.rx[self.lan_bus] += 1
+                self.rx[self.lan_bus.channel_info] += 1
                 if lan_msg.marker == MarkerEnum.CAN_1.value or lan_msg.marker == MarkerEnum.BOTH.value:
                     self._send(self.bus_1, can_message)
-                    self.tx[self.bus_1] += 1
+                    self.tx[self.bus_1.channel_info] += 1
                     log(f'sent {can_message} on bus 1')
                 if lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value:
-                    self._send(self.bus_2, can_message)
+                    self._send(self.bus_2.channel_info, can_message)
                     self.tx[self.bus_2] += 1
                     log(f'sent {can_message} on bus 2')
 
