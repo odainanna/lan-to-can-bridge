@@ -81,8 +81,8 @@ class Bridge:
                     self.tx[self.bus_1.channel_info] += 1
                     log(f'sent {can_message} on bus 1')
                 if lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value:
-                    self._send(self.bus_2.channel_info, can_message)
-                    self.tx[self.bus_2] += 1
+                    self._send(self.bus_2, can_message)
+                    self.tx[self.bus_2.channel_info] += 1
                     log(f'sent {can_message} on bus 2')
 
     def stats(self):
