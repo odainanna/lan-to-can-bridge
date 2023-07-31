@@ -6,13 +6,13 @@ import tkinter as tk
 from tkinter.messagebox import showinfo
 
 import can
-from can.interfaces.pcan.pcan import PcanCanInitializationError
+from can.interfaces.pcan.pcan import PcanCanInitializationError, PcanBus
 from can.interfaces.virtual import VirtualBus
 
 from bridge import Bridge
 from lan_bus import LANBus
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 
 # parse args
 parser = argparse.ArgumentParser()
@@ -67,8 +67,8 @@ def create_buses(virtual=False):
             bus_kwargs = dict(auto_reset=True, bitrate=args.bitrate, fd=False)
 
         try:
-            bus_1 = VirtualBus(channel=channel_info[0]['channel'], **bus_kwargs)
-            bus_2 = VirtualBus(channel=channel_info[1]['channel'], **bus_kwargs)
+            bus_1 = PcanBus(channel=channel_info[0]['channel'], **bus_kwargs)
+            bus_2 = PcanBus(channel=channel_info[1]['channel'], **bus_kwargs)
             return bus_1, bus_2
         except PcanCanInitializationError:
             showinfo(title=None, message=f'PCAN initialization failed')

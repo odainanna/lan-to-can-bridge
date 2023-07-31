@@ -30,10 +30,12 @@ class Bridge:
         self.lan_bus = lan_bus
         self.rx = {self.bus_1.channel_info: 0, self.bus_2.channel_info: 0, self.lan_bus.channel_info: 0}
         self.tx = {self.bus_1.channel_info: 0, self.bus_2.channel_info: 0, self.lan_bus.channel_info: 0}
-
-        if isinstance(bus_1, PcanBus):
-            assert self.bus_1.fd == self.bus_2.fd
+        self.fd = False
+        try:
             self.fd = self.bus_1.fd
+            assert self.bus_1.fd == self.bus_2.fd
+        except AttributeError:
+            self.fd = False
         self.start()
 
     @staticmethod
