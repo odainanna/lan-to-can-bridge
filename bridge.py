@@ -42,28 +42,15 @@ def create_pcan_bus(channel, bitrate, dbitrate):
 
 
 def batch_create_pcan_buses(bitrate, dbitrate, single=None):
-    available_channels = can.detect_available_configs('pcan')
-    if single == 1:
-        selected_channels = [available_channels[0]]
-    elif single == 2:
-        selected_channels = [available_channels[1]]
-    else:
-        selected_channels = available_channels
-    return [create_pcan_bus(x['channel'], bitrate, dbitrate) for x in selected_channels]
-
-
-def batch_create_pcan_bus(bitrate, dbitrate, single=None):
-    channel_info = can.detect_available_configs('pcan')
-    try:
-        if single == 1:  # just the first channel
-            return [create_pcan_bus(channel_info[0]['channel'], bitrate, dbitrate), None]
+    try: 
+        if single == 1:
+            return create_pcan_bus('PCAN_USBBUS1', bitrate, dbitrate), None
         elif single == 2:
-            return [None, create_pcan_bus(channel_info[1]['channel'], bitrate, dbitrate)]
+            return None, create_pcan_bus('PCAN_USBBUS2', bitrate, dbitrate)
         else:
-            return [create_pcan_bus(x['channel'], bitrate, dbitrate) for x in channel_info]
-    except IndexError:
-        return []
-
+            return create_pcan_bus('PCAN_USBBUS1', bitrate, dbitrate), create_pcan_bus('PCAN_USBBUS2', bitrate, dbitrate)
+    except PcanCanInitializationError:
+        return None, None
 
 def create_lan_bus(port, seg):
     return LANBus(port=port, dest='239.0.0.' + str(seg), segment=seg)
@@ -81,7 +68,6 @@ class ChannelInfo:
 
     def recv(self):
         msg = self.channel.recv()
-        self.rx += 1
         return msg
 
 
@@ -102,18 +88,21 @@ class PcanChannelInfo(ChannelInfo):
 
 
 class Bridge:
-
-    def __init__(self, lan_bus, *can_channels):
+    def __init__(self, lan_bus, c_1=None, c_2=None):
         self.lan_channel = LanChannelInfo(lan_bus, 'LAN')
-        self.can_channels = [PcanChannelInfo(can_channels[i],
-                                             'CAN ' + str(i + 1), marker=i + 1) for i in range(len(can_channels))]
+        self.can_channels = []
+        if c_1:
+            self.can_1 = PcanChannelInfo(c_1, c_1.channel_info, marker=1)
+            self.can_channels.append(self.can_1)
+        else:
+            self.can_1 = None
+        if c_2:
+            self.can_2 = PcanChannelInfo(c_2, c_2.channel_info, marker=2)
+            self.can_channels.append(self.can_2)
+        else:
+            self.can_2 = None
         self.channels = self.can_channels + [self.lan_channel]
-        self.fd = False
-
-        try:
-            self.fd = any(x.fd for x in can_channels)
-        except AttributeError:
-            self.fd = False
+        self.fd = (c_1 is not None and c_1.fd) or (c_2 is not None and c_2.fd)
         self.start()
 
     def listen_to_can(self, can_channel):
@@ -125,6 +114,7 @@ class Bridge:
                 return
             if msg.error_state_indicator or msg.is_error_frame:
                 continue
+            can_channel.rx += 1
             self.lan_channel.send(msg, marker=can_channel.marker)
 
     def listen_to_lan(self):
@@ -136,12 +126,14 @@ class Bridge:
             if message_has_been_forwarded_already:
                 continue
             for lan_msg in lan_msg_obj.messages:
+                self.lan_channel.rx += 1
                 lan_msg.arbitration_id &= 0xfff
                 can_message = create_can_msg(lan_msg, self.fd)
-                if lan_msg.marker == MarkerEnum.CAN_1.value or lan_msg.marker == MarkerEnum.BOTH.value:
-                    self.can_channels[0].send(can_message)
-                if lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value:
-                    self.can_channels[1].send(can_message)
+                if self.can_1 and (lan_msg.marker == MarkerEnum.CAN_1.value or lan_msg.marker == MarkerEnum.BOTH.value):
+                    self.can_1.send(can_message)
+                if self.can_2 and (lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value):
+                    self.can_2.send(can_message)
+
 
     def stats(self):
         return [['', *[c.name for c in self.channels]],

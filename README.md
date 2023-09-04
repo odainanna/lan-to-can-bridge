@@ -2,7 +2,7 @@
 
 ```bash
 # install these for the bridge
-pip install python-can msgpack uptime
+pip install python-can>=4.2.1 msgpack uptime
 
 # these for packing
 pip install pyinstaller

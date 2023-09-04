@@ -5,19 +5,18 @@ import sys
 import tkinter as tk
 from tkinter.messagebox import showinfo
 
+import can
 from can.interfaces.pcan.pcan import PcanCanInitializationError
-from can.interfaces.virtual import VirtualBus
-
 from bridge import Bridge, batch_create_pcan_buses, create_lan_bus
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 # parse args
 parser = argparse.ArgumentParser()
 parser.add_argument('--net', default='127.0.0.1')
 parser.add_argument('--port', default=62222, type=int)
 parser.add_argument('--seg', default=1, type=int)
-parser.add_argument('--bitrate', default=125_000, type=int)
+parser.add_argument('--bitrate', default=250_000, type=int)
 parser.add_argument('--dbitrate', type=int)
 parser.add_argument('--single', default=3, type=int)
 args = parser.parse_args()
@@ -61,15 +60,11 @@ class BridgeApp(tk.Frame):
         # create bridge
         lan_bus = create_lan_bus(args.port, args.seg)
         try:
-            can_buses = batch_create_pcan_buses(args.bitrate, args.dbitrate, args.single)
+            can_1, can_2 = batch_create_pcan_buses(args.bitrate, args.dbitrate, args.single)
         except PcanCanInitializationError or IndexError:
             showinfo(title=None, message=f'PCAN initialization failed')
             sys.exit(0)
-        if not can_buses:
-            showinfo(title=None, message=f'No available PCAN channels. Running in virtual mode.')
-            can_buses = [VirtualBus('v1'), VirtualBus('v2')]
-
-        self.bridge = Bridge(lan_bus, *can_buses)
+        self.bridge = Bridge(lan_bus, c_1=can_1, c_2=can_2)
 
         # create table widget
         self.table = self.table = Table(self, self.bridge.stats())
