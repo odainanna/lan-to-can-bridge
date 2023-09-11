@@ -26,12 +26,26 @@ def create_can_msg(lan_msg, is_fd):
 def create_pcan_bus(channel, bitrate, dbitrate):
     if dbitrate:
         timing = can.BitTimingFd.from_sample_point(
-            f_clock=80_000_000,
+            f_clock=40_000_000,
             nom_bitrate=bitrate,
-            nom_sample_point=81.3,
+            nom_sample_point=80.0,
             data_bitrate=dbitrate,
-            data_sample_point=80.0,
+            data_sample_point=75.0
         )
+        # timing = can.BitTimingFd(
+        #     f_clock=40_000_000, 
+        #     nom_brp=2, nom_tseg1 = 59, nom_tseg2= 20, nom_sjw=20, 
+        #     data_brp=2, data_tseg1=16, data_tseg2=3, data_sjw=3
+        # )    
+        # timing = can.BitTimingFd.from_bitrate_and_segments(
+        #     f_clock=40_000_000, 
+        #     nom_bitrate=bitrate,
+        #     nom_tseg1 = 32, nom_tseg2= 32, 
+        #     nom_sjw=32, 
+        #     data_bitrate=dbitrate,
+        #     data_tseg1=31, data_tseg2=8, 
+        #     data_sjw=8
+        # )              
         bus_kwargs = dict(auto_reset=True, timing=timing)
     else:
         bus_kwargs = dict(auto_reset=True, bitrate=bitrate, fd=False)
