@@ -16,6 +16,6 @@ Pyinstaller bridgeapp.py --noconsole --onefile
 dist/bridgeapp
 ```
 
-## Config for PCAN viewer 
+## Config for PCAN viewer
 
 ![pcan_viewer_ucan8_dio_config.png](pcan_viewer_ucan8_dio_config.png)

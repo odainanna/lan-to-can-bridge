@@ -5,8 +5,8 @@ import sys
 import tkinter as tk
 from tkinter.messagebox import showinfo
 
-import can
 from can.interfaces.pcan.pcan import PcanCanInitializationError
+
 from bridge import Bridge, batch_create_pcan_buses, create_lan_bus
 
 VERSION = '1.0.3'

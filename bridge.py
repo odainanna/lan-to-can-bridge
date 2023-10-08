@@ -32,20 +32,6 @@ def create_pcan_bus(channel, bitrate, dbitrate):
             data_bitrate=dbitrate,
             data_sample_point=75.0
         )
-        # timing = can.BitTimingFd(
-        #     f_clock=40_000_000, 
-        #     nom_brp=2, nom_tseg1 = 59, nom_tseg2= 20, nom_sjw=20, 
-        #     data_brp=2, data_tseg1=16, data_tseg2=3, data_sjw=3
-        # )    
-        # timing = can.BitTimingFd.from_bitrate_and_segments(
-        #     f_clock=40_000_000, 
-        #     nom_bitrate=bitrate,
-        #     nom_tseg1 = 32, nom_tseg2= 32, 
-        #     nom_sjw=32, 
-        #     data_bitrate=dbitrate,
-        #     data_tseg1=31, data_tseg2=8, 
-        #     data_sjw=8
-        # )              
         bus_kwargs = dict(auto_reset=True, timing=timing)
     else:
         bus_kwargs = dict(auto_reset=True, bitrate=bitrate, fd=False)
@@ -56,15 +42,17 @@ def create_pcan_bus(channel, bitrate, dbitrate):
 
 
 def batch_create_pcan_buses(bitrate, dbitrate, single=None):
-    try: 
+    try:
         if single == 1:
             return create_pcan_bus('PCAN_USBBUS1', bitrate, dbitrate), None
         elif single == 2:
             return None, create_pcan_bus('PCAN_USBBUS2', bitrate, dbitrate)
         else:
-            return create_pcan_bus('PCAN_USBBUS1', bitrate, dbitrate), create_pcan_bus('PCAN_USBBUS2', bitrate, dbitrate)
+            return create_pcan_bus('PCAN_USBBUS1', bitrate, dbitrate), create_pcan_bus('PCAN_USBBUS2', bitrate,
+                                                                                       dbitrate)
     except PcanCanInitializationError:
         return None, None
+
 
 def create_lan_bus(port, seg):
     return LANBus(port=port, dest='239.0.0.' + str(seg), segment=seg)
@@ -147,7 +135,6 @@ class Bridge:
                     self.can_1.send(can_message)
                 if self.can_2 and (lan_msg.marker == MarkerEnum.CAN_2.value or lan_msg.marker == MarkerEnum.BOTH.value):
                     self.can_2.send(can_message)
-
 
     def stats(self):
         return [['', *[c.name for c in self.channels]],
