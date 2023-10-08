@@ -49,7 +49,7 @@ class LANBus:
                                   message_count=1, error_passive=0, bus_off=0)
         can_message = lan_utils.Message(arbitration_id=can_message.arbitration_id,
                                         data=bytearrray_to_list(can_message.data),
-                                        dlc=can_message.dlc,
+                                        dlc=convert_(can_message.dlc),
                                         msgCtrl=0,
                                         sec1970=round(can_message.timestamp),
                                         nanoSec=0,
