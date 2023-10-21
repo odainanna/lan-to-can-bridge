@@ -7,9 +7,10 @@ from tkinter.messagebox import showinfo
 
 from can.interfaces.pcan.pcan import PcanCanInitializationError
 
-from bridge import Bridge, batch_create_pcan_buses, create_lan_bus
+from bridge import Bridge
+from bridge_utils import create_lan_bus, create_pcan_buses
 
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 
 # parse args
 parser = argparse.ArgumentParser()
@@ -58,13 +59,14 @@ class BridgeApp(tk.Frame):
         self.grid()
 
         # create bridge
-        lan_bus = create_lan_bus(args.port, args.seg)
         try:
-            can_1, can_2 = batch_create_pcan_buses(args.bitrate, args.dbitrate, args.single)
-        except PcanCanInitializationError or IndexError:
+            lan_bus = create_lan_bus(args.port, args.seg)
+            can_1, can_2 = create_pcan_buses(args.bitrate, args.dbitrate, args.single)
+        except PcanCanInitializationError:
             showinfo(title=None, message=f'PCAN initialization failed')
             sys.exit(0)
-        self.bridge = Bridge(lan_bus, c_1=can_1, c_2=can_2)
+
+        self.bridge = Bridge(lan_bus, can_1, can_2)
 
         # create table widget
         self.table = self.table = Table(self, self.bridge.stats())

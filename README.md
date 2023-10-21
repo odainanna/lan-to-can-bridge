@@ -30,6 +30,6 @@ python --dbitrate 2000000 --bitrate 250000
 
 python --bitrate 125000
 
-### single cna
-
+### single mode
 python --bitrate 125000 --single 1 
+python --bitrate 125000 --single 2
