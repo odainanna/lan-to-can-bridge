@@ -11,6 +11,7 @@ data_files = [
     ('lan_bus.py', '.'),
     ('lan_utils.py', '.'),
     ('bridgeapp.py', '.'),
+    ('bridge_utils.py', '.'),
 ]
 
 a = Analysis(

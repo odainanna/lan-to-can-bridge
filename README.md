@@ -33,3 +33,9 @@ python --bitrate 125000
 ### single mode
 python --bitrate 125000 --single 1 
 python --bitrate 125000 --single 2
+
+#eller som .exe der DPU-G er koblet til CAN2 på PCAN
+#WinPS må da være konfigurert for CAM 1&2
+
+bridgeapp --bitrate 125000 --single 2 
+
