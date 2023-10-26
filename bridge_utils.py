@@ -18,27 +18,9 @@ def create_pcan_bus(channel, bitrate, dbitrate):
             data_bitrate=dbitrate,
             data_sample_point=75.0
         )
-        bus_kwargs = dict(auto_reset=True, timing=timing)
-    if bitrate == 125000 and dbitrate == 125000:
-        timing = can.BitTimingFd(
-            f_clock=40_000_000,
-            nom_brp=8, nom_tseg1=29, nom_tseg2=10, nom_sjw=10,
-            data_brp=8, data_tseg1=31, data_tseg2=8, data_sjw=8
-        )
-        bus_kwargs = dict(auto_reset=True, timing=timing)
-    elif bitrate == 250000 and dbitrate == 1000000:
-        timing = can.BitTimingFd(
-            f_clock=40_000_000,
-            nom_brp=1, nom_tseg1=127, nom_tseg2=32, nom_sjw=32,
-            data_brp=1, data_tseg1=31, data_tseg2=8, data_sjw=8
-        )
-        bus_kwargs = dict(auto_reset=True, timing=timing)
+        return PcanBus(channel=channel, auto_reset=True, timing=timing)
     else:
-        bus_kwargs = dict(auto_reset=True, bitrate=bitrate, fd=False)
-    try:
-        return PcanBus(channel=channel, **bus_kwargs)
-    except PcanCanInitializationError:
-        return None
+        return PcanBus(channel=channel, auto_reset=True, bitrate=bitrate, fd=False) 
 
 
 def create_pcan_buses(bitrate, dbitrate, single=None):

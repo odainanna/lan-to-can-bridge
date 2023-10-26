@@ -10,7 +10,7 @@ from can.interfaces.pcan.pcan import PcanCanInitializationError
 from bridge import Bridge
 from bridge_utils import create_lan_bus, create_pcan_buses
 
-VERSION = '1.0.4'
+VERSION = '1.0.5'
 
 # parse args
 parser = argparse.ArgumentParser()
