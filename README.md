@@ -10,7 +10,7 @@ pip install pyinstaller
 
 ```bash
 # build the exe-file
-Pyinstaller bridgeapp.py --noconsole --onefile
+pyinstaller bridgeapp.py --noconsole --onefile
 
 # run it 
 dist/bridgeapp
