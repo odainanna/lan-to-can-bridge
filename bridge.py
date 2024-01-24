@@ -58,8 +58,7 @@ class Bridge:
             try:
                 msg: can.Message = can_channel.bus.recv()
             except Exception:
-                traceback.print_exc()
-                return
+                continue
             if msg.error_state_indicator or msg.is_error_frame:
                 continue
             can_channel.log_rx()
