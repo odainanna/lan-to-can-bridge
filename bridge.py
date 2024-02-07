@@ -62,6 +62,7 @@ class Bridge:
             if msg.error_state_indicator or msg.is_error_frame:
                 continue
             can_channel.log_rx()
+            msg.dlc = self.length_to_dlc(msg)
             self.lan.bus.send(msg, marker=can_channel.marker)
             self.lan.log_tx()
 
@@ -76,6 +77,8 @@ class Bridge:
             for lan_msg in lan_msg_obj.messages:
                 self.lan.log_rx()
                 lan_msg.arbitration_id &= 0xfff
+                length = self.dlc_to_length(lan_msg)
+
                 can_message = can.Message(
                     timestamp=lan_msg.sec1970,
                     arbitration_id=lan_msg.arbitration_id,
@@ -83,8 +86,8 @@ class Bridge:
                     is_remote_frame=False,
                     is_error_frame=False,
                     channel=None,
-                    dlc=lan_msg.dlc,
-                    data=lan_msg.data[: lan_msg.dlc],
+                    dlc=length,
+                    data=lan_msg.data[: length],
                     check=True,
                     is_fd=self.fd,
                 )
@@ -97,6 +100,48 @@ class Bridge:
                     if self.can_2.is_active():
                         self.can_2.bus.send(can_message)
                         self.can_2.log_tx()
+
+    def dlc_to_length(self, msg):
+        if msg.dlc <= 8:
+            length = msg.dlc
+        elif msg.dlc == 9:
+            length = 12
+        elif msg.dlc == 10:
+            length = 16
+        elif msg.dlc == 11:
+            length = 20
+        elif msg.dlc == 12:
+            length = 24
+        elif msg.dlc == 13:
+            length = 32
+        elif msg.dlc == 14:
+            length = 48
+        elif msg.dlc == 15:
+            length = 64
+        return length
+
+    def length_to_dlc(self, msg):
+        if msg.dlc > 48:
+            dlc = 15
+        elif msg.dlc > 32:
+            dlc = 14
+        elif msg.dlc > 24:
+            dlc = 13
+        elif msg.dlc > 20:
+            dlc = 12
+        elif msg.dlc > 16:
+            dlc = 11
+        elif msg.dlc > 12:
+            dlc = 10
+        elif msg.dlc > 8:
+            dlc = 9
+        else:
+            dlc = msg.dlc
+        return dlc
+
+
+
+
 
     def stats(self):
         return [['', *[c.name for c in self.active_channels]],

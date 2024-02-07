@@ -11,17 +11,20 @@ def create_lan_bus(port, seg):
 
 def create_pcan_bus(channel, bitrate, dbitrate):
     if dbitrate:
-        timing = can.BitTimingFd.from_sample_point(
+        bitTimingFd = can.BitTimingFd.from_bitrate_and_segments(
             f_clock=40_000_000,
             nom_bitrate=bitrate,
-            nom_sample_point=80.0,
+            nom_tseg1=33,
+            nom_tseg2=6,
+            nom_sjw=6,
             data_bitrate=dbitrate,
-            data_sample_point=75.0
+            data_tseg1=32,
+            data_tseg2=7,
+            data_sjw=3,
         )
-        return PcanBus(channel=channel, auto_reset=True, timing=timing)
+        return PcanBus(channel=channel, auto_reset=True,timing=bitTimingFd, fd=True)
     else:
         return PcanBus(channel=channel, auto_reset=True, bitrate=bitrate, fd=False) 
-
 
 def create_pcan_buses(bitrate, dbitrate, single=None):
         if single == 1:
@@ -29,8 +32,7 @@ def create_pcan_buses(bitrate, dbitrate, single=None):
         elif single == 2:
             return None, create_pcan_bus('PCAN_USBBUS2', bitrate, dbitrate)
         elif single == 3:
-            return create_pcan_bus('PCAN_USBBUS1', bitrate, dbitrate), create_pcan_bus('PCAN_USBBUS2', bitrate,
-                                                                                       dbitrate)
+            return create_pcan_bus('PCAN_USBBUS1', bitrate, dbitrate), create_pcan_bus('PCAN_USBBUS2', bitrate, dbitrate)
         else:
             raise ValueError('single argument must be 1, 2, or 3')
 
